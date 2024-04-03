@@ -1,47 +1,34 @@
 <?php
-include './config.php';
-
-$successMessage = "";
-$error = "";
-
+include 'config.php';
+session_start();
+$loginError = "";
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $email = mysqli_real_escape_string($conn, $_POST["email"]);
     $password = mysqli_real_escape_string($conn, $_POST["password"]);
-    $role = mysqli_real_escape_string($conn, $_POST["role"]);
-
-    // Check if the email is not already registered
-    $checkExistingEmail = "SELECT id FROM users WHERE email = '$email'";
-    $result = $conn->query($checkExistingEmail);
-
+    $checkUserQuery = "SELECT id, password, role FROM users WHERE email = '$email'";
+    $result = $conn->query($checkUserQuery);
     if ($result === false) {
-        $error = "Error checking existing email: " . $conn->error;
+        $loginError = "Error checking user: " . $conn->error;
     } else {
         if ($result->num_rows > 0) {
-            $error = "Error: Email is already registered.";
-        } else {
-            // Hash the password for security
-            $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
-
-            // Add a timestamp column to the "users" table
-            $timestamp = date("Y-m-d H:i:s");
-
-            $insertQuery = "INSERT INTO users (email, password, role, signup_timestamp) VALUES (?, ?, ?, ?)";
-            $stmt = $conn->prepare($insertQuery);
-            $stmt->bind_param("ssss", $email, $hashedPassword, $role, $timestamp);
-
-            if ($stmt->execute()) {
-                $successMessage = "Signup successful as $role with email: $email";
-                // Redirect to login.php after a short delay
-                header("refresh:2;url=./index.php");
-            } else {
-                $error = "Error inserting data: " . $stmt->error;
-            }
-
-            $stmt->close();
-        }
-    }
-}
-
+            $row = $result->fetch_assoc();
+            $hashedPassword = $row['password'];
+            if (password_verify($password, $hashedPassword)) {
+                $_SESSION["user_id"] = $row['id'];
+                $_SESSION["role"] = $row['role'];
+                $_SESSION["email"] = $email;
+                if ($row['role'] == "student") {
+                    header("Location: /student/student_dashboard.php"); exit();} 
+                    elseif ($row['role'] == "faculty") {
+                    header("Location: /faculty/faculty_dashboard.php"); exit();}
+                     elseif ($row['role'] == "admin") {
+                    header("Location: /admin/admin_dashboard.php"); exit(); }
+                     elseif ($row['role'] == "deanpg") {
+                    header("Location: /deanpg/deanpg_dashboard.php");
+                    exit();} 
+                    else { $loginError = "Invalid role for the user."; }
+            } else { $loginError = "Wrong email or password."; }} 
+            else { $loginError = "Wrong email or password.";}}}
 $conn->close();
 ?>
 
@@ -50,7 +37,7 @@ $conn->close();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Signup</title>
+    <title>Login</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -85,16 +72,6 @@ $conn->close();
             box-sizing: border-box;
         }
 
-        .role-container {
-            display: flex;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-
-        input[type="radio"] {
-            margin-right: 5px;
-        }
-
         input[type="submit"] {
             background-color: #4CAF50; /* Pastel green */
             color: white;
@@ -105,7 +82,7 @@ $conn->close();
             background-color: #45a049;
         }
 
-        .login-message {
+        .signup-message {
             margin-top: 15px;
             color: #555;
         }
@@ -123,9 +100,6 @@ $conn->close();
 </head>
 <body>
 
-<?php echo $successMessage; ?>
-<?php echo $error; ?>
-
 <form method="post" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>">
     <label for="email">Email:</label>
     <input type="email" id="email" name="email" required>
@@ -133,18 +107,10 @@ $conn->close();
     <label for="password">Password:</label>
     <input type="password" id="password" name="password" required>
 
-    <div class="role-container">
-        <label>Role:</label>
-        <input type="radio" id="student" name="role" value="student" checked>
-        <label for="student">Student</label>
-        <input type="radio" id="faculty" name="role" value="faculty">
-        <label for="faculty">Faculty</label>
-    </div>
+    <input type="submit" value="Login">
 
-    <input type="submit" value="Signup" name="submit_student">
-    
-    <div class="login-message">
-        Already have an account? <a href="index.php">Login here</a>.
+    <div class="signup-message">
+        New user? <a href="signup.php">Sign up here</a>.
     </div>
 </form>
 

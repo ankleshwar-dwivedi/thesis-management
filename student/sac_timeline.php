@@ -181,7 +181,7 @@ if (isset($_SESSION['role']) && $_SESSION['role'] == 'student') {
             }
 
             // Add additional information here, for example:
-            echo "<p>Additional Information: Your additional content goes here.</p>";
+        
             echo "</div>";
             echo "</div>";
         }
